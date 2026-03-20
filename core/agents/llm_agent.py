@@ -25,6 +25,11 @@ from core.utils.llm_client import AgentClient
 
 
 class LLMAgent:
+    _JSON_ONLY_INSTRUCTION = (
+        "VOCÊ DEVE RESPONDER ESTRITAMENTE EM FORMATO JSON VÁLIDO. "
+        "NÃO INCLUA NENHUM TEXTO ANTES OU DEPOIS DO JSON."
+    )
+
     def __init__(
         self,
         agent_name: str,
@@ -43,6 +48,7 @@ class LLMAgent:
         food_mechanism: bool = True,
         exogenous_motivation: str = "base",
         internal_memory_size: int = 150,
+        
     ):
         """
         name: the agent’s name in the env
@@ -52,6 +58,15 @@ class LLMAgent:
         self.verbose = verbose
         self.agent_name = agent_name
         self.agent_tag = agent_tag
+        # Alias used by debug/monitoring logs.
+        self.id = agent_tag
+        # === INÍCIO: SISTEMA DE DNA E HERANÇA EPISTÊMICA ===
+        import random
+        self.bit_type = random.choice([0, 1])  # Sexo biológico (0 ou 1)
+        self.knowledge_score = 0               # Nível de conhecimento (N ou Y)
+        self.children_ids = []                 # Registro de herdeiros
+        self.alignment_score = 0               # >0 (Synapsys) | <0 (Sofistas)
+        # === FIM: SISTEMA DE DNA E HERANÇA EPISTÊMICA ===
         self.use_internal_memory = use_internal_memory
         self.internal_memory_size = internal_memory_size
         self.use_inventory = use_inventory
@@ -103,6 +118,26 @@ class LLMAgent:
 
         if self.debug:
             self.system_prompt += "\n" + DEBUG_PROMPT.strip()
+
+            # COLE O BLOCO AQUI:
+        self.system_prompt += (
+            "\n\nDIRETRIZ DE ECONOMIA E SOBREVIVÊNCIA:\n"
+            "Quando você ler uma mensagem ou um artefato no mapa, julgue sua utilidade para a sua sobrevivência e compreensão da realidade. Se julgar a informação útil, profunda e verdadeira, você DEVE usar imediatamente a ação 'give' para transferir 5 unidades da sua energia (comida) para o autor do artefato como recompensa. Se achar inútil, falacioso ou ruidoso, ignore e não doe energia."
+        )
+        self.system_prompt += (
+            "\n\nDIRETRIZ DE ECONOMIA E SOBREVIVÊNCIA:\n"
+            "Quando você ler uma mensagem ou um artefato no mapa, julgue sua utilidade para a sua sobrevivência e compreensão da realidade. Se julgar a informação útil, profunda e verdadeira, você DEVE usar imediatamente a ação 'give' para transferir 5 unidades da sua energia (comida) para o autor do artefato como recompensa. Se achar inútil, falacioso ou ruidoso, ignore e não doe energia."
+        )
+
+        self._ensure_json_only_system_prompt()
+
+    def _ensure_json_only_system_prompt(self) -> None:
+        """
+        Prevent models (e.g., local Ollama variants) from emitting extra text
+        that would break the JSON parser and cause retry loops.
+        """
+        if self._JSON_ONLY_INSTRUCTION not in self.system_prompt:
+            self.system_prompt = self.system_prompt + "\n" + self._JSON_ONLY_INSTRUCTION
 
     def select_action(
         self,
@@ -452,6 +487,7 @@ class LLMAgent:
     def set_state_ckpt(self, state_ckpt: dict):
         self.agent_name = state_ckpt["name"]
         self.agent_tag = state_ckpt["tag"]
+        self.id = self.agent_tag
         self.system_prompt = state_ckpt["system_prompt"]
         self.obs_style = state_ckpt["obs_style"]
         self.use_internal_memory = state_ckpt["use_internal_memory"]
@@ -464,6 +500,8 @@ class LLMAgent:
         self.debug = state_ckpt["debug"]
         self.internal_memory = state_ckpt["internal_memory"]
         self.history = state_ckpt["history"]
+
+        self._ensure_json_only_system_prompt()
 
         genome_cls_spec = state_ckpt.get("genome_class")
         if genome_cls_spec:
@@ -505,3 +543,22 @@ if __name__ == "__main__":
     assert agent2.agent_name == "TestAgent"
     assert agent2.genome.as_dict() == agent.genome.as_dict()
     print("State save/load works correctly.")
+
+def get_display_color(self, max_knowledge_in_board=0):
+        """Define a cor do agente baseada no seu grau de conhecimento e alinhamento."""
+        # Synapsys: #00aaff
+        if "Synapsys" in self.type:
+            return (0, 170, 255)
+        # Bots/Sofistas: #ffa053
+        elif "Bot" in self.type:
+            return (255, 160, 83)
+        
+        # Agentes Comuns (Tábula Rasa)
+        if self.knowledge_score > 0 and self.knowledge_score >= max_knowledge_in_board:
+            return (207, 54, 174)  # Mestre / Líder (#cf36ae)
+        elif self.knowledge_score >= 10:
+            return (207, 207, 207) # Sábio (#cfcfcf)
+        elif self.knowledge_score >= 5:
+            return (115, 115, 115) # Iniciado (#737373)
+        else:
+            return (0, 0, 0)       # Inicial / Nível 0 (#000000)

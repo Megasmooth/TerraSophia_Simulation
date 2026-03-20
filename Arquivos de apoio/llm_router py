@@ -34,17 +34,12 @@ class LLMRouter:
             llm_client = AgentClient(
                 base_url="http://127.0.0.1:11434/v1", api_key="ollama"
             )
-            # --- FASE 1: MEMÓRIA EXPANDIDA (TESE) ---
             llm_chat_params = {
                 "model": "llama3",
                 "temperature": 0.0,
                 "response_format": {"type": "json_object"},
-                "num_ctx": 8192,     # Usa a sua RAM de 35GB para manter o histórico de longo prazo
-                "max_tokens": 4096   # Permite raciocínios filosóficos mais longos
             }
-            # ----------------------------------------
             self.clients = [(llm_client, llm_chat_params)]
-            
         elif "qwen" in self.model_name.lower() or "deepseek" in self.model_name.lower():  # type: ignore
             if ports is None:
                 raise ValueError(
@@ -167,3 +162,4 @@ class LLMRouter:
 
     def next(self):
         return next(self.cycle)
+

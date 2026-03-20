@@ -2097,3 +2097,4 @@ if __name__ == "__main__":
         img = Image.fromarray(rgb)  # type: ignore
         img.save(image_path / f"step_{i:04d}.png")
     env.close()
+

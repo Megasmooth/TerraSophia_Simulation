@@ -11,4 +11,10 @@ plots/
 *.png
 *.pdf
 *-checkpoint.ipynb
-*.svg
+*.svgvenv/
+logs/
+__pycache__/
+tiktoken_cache/
+*.mp4
+*.pkl
+venv/

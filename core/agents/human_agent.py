@@ -29,6 +29,8 @@ class HumanAgent:
     ):
         self.agent_name = agent_name
         self.agent_tag = agent_tag
+        # Alias used by debug/monitoring logs.
+        self.id = agent_tag
         self.use_internal_memory = use_internal_memory
         self.use_inventory = use_inventory
         self.artifact_creation = artifact_creation

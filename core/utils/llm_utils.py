@@ -43,6 +43,7 @@ def select_with_retry(
     original_history_len = agent.max_history
     for attempt in range(retries):
         try:
+            print(f"\n[LOG] {agent.id} está pensando...")
             action = agent.select_action(
                 obs=observation,
                 reward=reward,
@@ -53,6 +54,7 @@ def select_with_retry(
                 client=llm_client,
             )
             agent.max_history = original_history_len
+            print(f"[LOG] {agent.id} respondeu com sucesso.")
             return action, False
         except BadRequestError as e:
             print(
@@ -76,6 +78,7 @@ def select_with_retry(
                 "params": {"direction": "stay"},
             }, True
         except Exception as e:
+            print(f"[ERRO] {agent.id} falhou na tentativa {attempt + 1}: {e}")
             print(f"❌ Unexpected failure {agent.agent_name}({agent.agent_tag}): {e}")
             agent.max_history = original_history_len
             traceback.print_exc()
