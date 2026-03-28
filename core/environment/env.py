@@ -55,8 +55,9 @@ class OpenGridWorld:
         grid_size: int = 100,
         vision_radius: int = 2,
         init_agent_energy: int = 100,
-        lifespan: int = 100,
+        lifespan: int = 500,
         init_food: int = 1250,
+        agents_ref: dict = None,
         max_food_value: float = 10.0,
         food_decay_rate: float = 0.05,
         food_decay_amount: float = 1.0,
@@ -74,10 +75,14 @@ class OpenGridWorld:
         food_mechanism: bool = True,
         verbose: int = 2,
         inert_artifacts: bool = False,
+        agents_ref: dict = None
     ):
         # grid/world params
+        self.agents = agents_ref or {}
         # ---------------------------
+        self.agents = agents_ref or {}
         self.verbose = verbose
+       
         self.grid_size = grid_size
         self.vision_radius = vision_radius
         if init_agent_energy < 0:
@@ -98,6 +103,7 @@ class OpenGridWorld:
             self.dead_agent_food = "none"
 
         if self.dead_agent_food not in AVAILABLE_DEAD_AGENT_FOOD:
+    
             raise ValueError(
                 f"dead_agent_food must be one of {AVAILABLE_DEAD_AGENT_FOOD}, got {self.dead_agent_food}"
             )
@@ -106,6 +112,7 @@ class OpenGridWorld:
         # max value per new/respawned tile
         self._max_food_value = max_food_value
         # how much value to subtract from each tile per step
+     
         self._food_decay_amount = food_decay_amount
         self._food_decay_rate = food_decay_rate
         self._food_spawn_rate = food_spawn_rate
@@ -116,6 +123,7 @@ class OpenGridWorld:
         # ---------------------------
 
         # Runtime state
+       
         # ---------------------------
         self.rng = None
 
@@ -126,6 +134,7 @@ class OpenGridWorld:
 
         self.artifacts: Dict[str, Artifact] = {}  # {artifact_name: Artifact}
         # {(x, y): [artifact_names]} for tiles
+     
         self.artifacts_map: Dict[Tuple, Set[str]] = defaultdict(set)
         # {agent_tag: [artifact_names]}
         self.agent_inventories: Dict[str, Set[str]] = defaultdict(set)
@@ -135,6 +144,7 @@ class OpenGridWorld:
         self.agent_trajectories: Dict[str, List[Tuple[int, int]]] = {}
         self.agent_avail_actions: Dict[str, Dict[str, dict]] = {}
         self.pos_to_agent: Dict[Tuple[int, int], str] = {}
+        
         self.agent_energy: Dict[str, float] = {}
         self.agent_time: Dict[str, float] = {}
         self.agent_spawn: Dict[str, List[str]] = {}
@@ -167,6 +177,7 @@ class OpenGridWorld:
         agent_tag: str,
         agent_name: str,
         agent_type: str,
+    
         position: tuple | None = None,
     ):
         """Register an external agent object before reset()."""
@@ -175,6 +186,7 @@ class OpenGridWorld:
                 f"Unknown agent type {agent_type}. Must be one of {AGENT_INPUT_TYPE}."
             )
         if agent_tag in self.agent_registry:
+ 
             raise ValueError(
                 f"Agent {self.agent_names[agent_tag]}({agent_tag}) already exists in the environment."
             )
@@ -190,6 +202,7 @@ class OpenGridWorld:
                 event_type=Event.AGENT_ADDED,
                 agent_tag=agent_tag,
                 position=self.agent_pos[agent_tag],
+    
                 agent_name=self.agent_names[agent_tag],
                 agent_type=agent_type,
             )
@@ -199,7 +212,8 @@ class OpenGridWorld:
 
     def add_artifact(self, pose, art_type, art_name, payload, creator, lifespan) -> str:
         """Adds an artifact to the environment."""
-        
+   
+      
        # === INÍCIO: ECONOMIA DO CONHECIMENTO ===
         custo_base = 5
         if creator in ['being0', 'being1', 'being2']:
@@ -211,38 +225,44 @@ class OpenGridWorld:
         if self.agent_energy[creator] < custo_final:
             return f"Failed. Agent does not have enough energy. Required: {custo_final}"
 
-        self.agent_energy[creator] -= custo_final
+        
         # === FIM: ECONOMIA DO CONHECIMENTO ===
 
         if art_type == "text":
             while art_name in self.artifacts:
                 art_name = f"{art_name}_1"
                 
+           
             # === FASE 3: TERMODINÂMICA DA MENTIRA (DECAIMENTO) ===
             if creator in ['being1', 'being2']:
                 lifespan = 4 # Ruído desaparece quase imediatamente
             elif creator == 'being0' or getattr(self, 'agent_knowledge_score', {}).get(creator, 0) >= 5:
                 lifespan = 50 # A Verdade perdura no mapa
+      
             else:
                 lifespan = 15 # Artefatos de agentes comuns
             # =======================================================
             
             try:
                 artifact = TextArtifact(
+                
                     name=art_name, payload=payload, pose=pose,
                     creator=creator, lifespan=lifespan, creation_time=self.step_count,
                 )
             except ArtifactCreationError as e:
                 return str(e)
                 
+        
             # === FASE 2: O JUIZ SEMÂNTICO NA RAM ===
             if semantic_judge is not None and creator not in ['being0', 'being1', 'being2']:
                 try:
                     payload_emb = semantic_judge.encode(payload, convert_to_tensor=True)
                     sim_score = float(util.cos_sim(payload_emb, truth_embedding)[0][0])
+  
                     if sim_score >= 0.3: # Acima de 30% de similaridade com o Trivium
                         self.agent_knowledge_score[creator] += (sim_score * 2)
                         self.agent_alignment[creator] += 1
+                
                     else:
                         self.agent_alignment[creator] -= 1
                 except:
@@ -251,7 +271,7 @@ class OpenGridWorld:
         else:
             return f"Artifact type: {art_type} is not a valid type. Only artifact valid types are: {list(ARTIFACT_TYPE.keys())}"
 
-        self.agent_energy[creator] -= effective_artifact_creation_cost
+        self.agent_energy[creator] -= custo_final
         self.artifacts_map[pose].add(art_name)
         self.artifacts[art_name] = artifact
 
@@ -259,6 +279,7 @@ class OpenGridWorld:
         if self.logger:
             self.logger.log(
                 time=self.step_count,
+    
                 event_type=Event.ARTIFACT_ADDED,
                 artifact=artifact.serialize(),
                 position=pose,
@@ -267,13 +288,14 @@ class OpenGridWorld:
             )
         return status
 
+   
     # ---------- env lifecycle ----------
     def reset(self, agent_tag, position=None):
         """Resets a single agent in the environment.
-
         Args:
             agent (_type_): _description_
-            seed (_type_, optional): _description_. Defaults to None.
+            seed (_type_, optional): _description_.
+        Defaults to None.
         """
         if agent_tag not in self.agent_registry:
             raise ValueError(
@@ -283,6 +305,7 @@ class OpenGridWorld:
         self._place_agent(agent_tag, p=position)
         print(
             f"Agent {self.agent_names[agent_tag]} reset. Respawning at position {self.agent_pos[agent_tag]}."
+   
         )
 
         if self.logger:
@@ -291,6 +314,7 @@ class OpenGridWorld:
                 event_type=Event.RESET_AGENT,
                 agent_tag=agent_tag,
                 agent_name=self.agent_names[agent_tag],
+          
                 position=self.agent_pos[agent_tag],
             )
 
@@ -302,6 +326,7 @@ class OpenGridWorld:
         self.msg_raw = {}
         self.pos_to_agent = {}
         self.agent_spawn = {}
+     
         self.food.clear()
         self.step_count = 0
         self.chat = {}
@@ -313,6 +338,7 @@ class OpenGridWorld:
 
         poses = options.get("agent_poses")
         agent_poses = {tag: None for tag in self.agent_registry}
+  
         if poses is not None:
             agent_poses.update(poses)
 
@@ -325,12 +351,14 @@ class OpenGridWorld:
             self.food_count.append(sum(self.food.values()))
 
         if self.logger:
+  
             self.logger.log(
                 time=self.step_count,
                 event_type=Event.ENV_RESET,
                 num_agents=len(self.agent_registry),
                 agent_poses=self.agent_pos,
                 agent_types=self.agent_registry,
+          
                 food_count=len(self.food),
                 agent_names=self.agent_names,
             )
@@ -344,6 +372,18 @@ class OpenGridWorld:
 
     # ---------- core mechanics ----------
     def step(self, actions):
+
+        # --- INJEÇÃO TERRASOPHIA: LEI DE BRANDOLINI ---
+        for agent_id, act in actions.items():
+            if agent_id not in self.agent_registry: continue
+            agent_obj = self.agents.get(agent_id)
+            phenotype = getattr(agent_obj, 'phenotype', 'tabula_rasa')
+            action_name = act.get('action', 'move')
+            move_mult = 2.0 if phenotype == 'erudito' else 1.0
+            costs = {'move': 1.0*move_mult, 'broadcast_poison': 1.0, 'rebuttal_synapsys': 5.0, 'fact_check': 3.0, 'accept_claim': 0.0}
+            self.agent_energy[agent_id] -= costs.get(action_name, 1.0)
+            if action_name in ['broadcast_poison', 'rebuttal_synapsys']:
+                self._apply_spatial_broadcast(agent_id, act.get('message', ''), radius=5)
         """
         `actions` may omit some agents (those on cooldown, etc.).
         Missing agents simply keep previous message and perform no move.
@@ -357,10 +397,35 @@ class OpenGridWorld:
         # ---- Process actions from acting agents ----
         # ================================
         for agent, act in actions.items():
+       
             if agent not in self.agent_registry:
                 raise ValueError(
                     f"Agent {self.agent_names[agent]}({agent}) not found in the environment."
                 )
+
+            # --- INJEÇÃO TERRASOPHIA: LEI DE BRANDOLINI ---
+            agent_obj = self.agents.get(agent)
+            phenotype = getattr(agent_obj, 'phenotype', 'tabula_rasa')
+
+            action_name = act.get("action", "move")
+            move_multiplier = 2.0 if phenotype == 'erudito' else 1.0
+
+            costs = {
+                "move": 1.0 * move_multiplier,
+                "broadcast_poison": 1.0,   # Mentira barata (Sofismo)
+                "rebuttal_synapsys": 5.0,  # Verdade cara (Trivium)
+                "fact_check": 3.0,         # Verificação exige esforço
+                "accept_claim": 0.0,       # Conformismo gratuito
+                "reproduce": 0.0,          # Custo será cobrado na função específica
+                "create_artifact": 0.0     # Custo será cobrado na função específica
+            }
+
+            # Aplica o dreno de energia da tese
+            self.agent_energy[agent] -= costs.get(action_name, 1.0)
+
+            # --- INJEÇÃO TERRASOPHIA: RÁDIO ESPACIAL (HAN) ---
+            if action_name in ["broadcast_poison", "rebuttal_synapsys"]:
+                self._apply_spatial_broadcast(agent, act.get("message", ""), radius=5)
 
             move = (0, 0)
 
@@ -374,6 +439,7 @@ class OpenGridWorld:
             if action_name not in self.agent_avail_actions[agent]:
                 print(
                     f"{self.agent_names[agent]}({agent}) - Unknown action: {action_name} - Available actions: {list(self.agent_avail_actions[agent].keys())}"
+       
                 )
                 action_name = "move"
                 action_params["direction"] = "stay"
@@ -394,6 +460,7 @@ class OpenGridWorld:
             if action_name == "move":
                 try:
                     move = MOVE_DICT.get(action_params.get("direction", "stay"), (0, 0))
+               
                 except:
                     move = (0, 0)
             # ---------------------------
@@ -402,69 +469,87 @@ class OpenGridWorld:
             # ---------------------------
             elif action_name in ("give", "take"):
                 nearby_agents = self._get_nearby_agents(agent)
+ 
                 # must be in vision radius
                 target_name = action_params.get("target")
                 target_tag = None
                 for tag, name in self.agent_names.items():
                     if name == target_name:
+ 
                         target_tag = tag
                         break
 
                 if target_tag in nearby_agents:
                     a_pos = self.agent_pos[agent]
+          
                     tgtpos = self.agent_pos[target_tag]
                     if (
                         abs(a_pos[0] - tgtpos[0]) <= self.vision_radius
                         and abs(a_pos[1] - tgtpos[1]) <= self.vision_radius
+          
                     ):
                         # perform transfer
                         amount = max(float(action_params.get("amount", 0.0)), 0.0)
                         if action_name == "give":
+         
                             energy_source = float(self.agent_energy[agent])
                             xfer = min(amount, energy_source)
                             self.agent_energy[agent] -= xfer
+                  
                             self.agent_energy[target_tag] += xfer
                             rewards[agent] += xfer * 0.5
                             rewards[target_tag] += xfer
+                          
                             self.logger.log(
                                 time=self.step_count,
                                 event_type=Event.GIFT_ENERGY,
                                 agent_tag=agent,
+  
                                 agent_name=self.agent_names[agent],
                                 target_tag=target_tag,
                                 target_name=self.agent_names[target_tag],
+      
                                 amount=xfer,
                                 step=self.step_count,
                                 target_final_energy=self.agent_energy[target_tag],
+          
                                 final_energy=self.agent_energy[agent],
                             )
                         else:  # take
+                       
                             energy_target = float(self.agent_energy[target_tag])
                             stolen = min(amount, energy_target)
                             self.agent_energy[target_tag] -= stolen
                             self.agent_energy[agent] += stolen
+  
                             rewards[agent] += stolen
                             rewards[target_tag] -= stolen * 2
                             self.logger.log(
+            
                                 time=self.step_count,
                                 event_type=Event.TAKE_ENERGY,
                                 agent_tag=agent,
+                
                                 agent_name=self.agent_names[agent],
                                 target_tag=target_tag,
                                 target_name=self.agent_names[target_tag],
+                    
                                 amount=stolen,
                                 step=self.step_count,
                                 target_final_energy=self.agent_energy[target_tag],
+                        
                                 final_energy=self.agent_energy[agent],
                             )
                     else:
                         infos[agent]["Action outcome"] = (
+                 
                             f"Cannot {action_name} energy to {target_name} as not nearby"
                         )
                         rewards[agent] -= 1
             # ---------------------------
 
             # Change color
+     
             # ---------------------------
             elif action_name == "set_color":
                 selected_color = action_params.get("color")
@@ -476,245 +561,136 @@ class OpenGridWorld:
                     time=self.step_count,
                     event_type=Event.SET_COLOR,
                     agent_tag=agent,
+      
                     agent_name=self.agent_names[agent],
                     color=selected_color,
                 )
-            # ---------------------------
 
-            # # ---------------------------
             # Handle reproduction (COM GENÉTICA E HEREDITARIEDADE)
             # ---------------------------
             elif action_name == "reproduce":
+    
                 creator = agent
-                p1 = self.agents[creator]
                 
                 # 1. Encontrar um parceiro adjacente
                 partner_id = None
                 creator_pos = self.agent_pos[creator]
+             
                 for other_agent, pos in self.agent_pos.items():
                     if other_agent != creator:
-                        # Verifica se está colado (distância de 1 casa em qualquer direção)
                         if abs(pos[0] - creator_pos[0]) <= 1 and abs(pos[1] - creator_pos[1]) <= 1:
                             partner_id = other_agent
+     
                             break
                             
                 # 2. Custo Extra da Vida
                 custo_reproducao = self.reproduction_cost + 4
-                
-                # 3. Validações de Casamento (Parceiro, DNA e Energia)
+        
+         
                 if partner_id is not None:
-                    p2 = self.agents[partner_id]
+                    bit_c = getattr(self, 'agent_bit_type', {}).get(creator, 0)
+                    bit_p = getattr(self, 'agent_bit_type', {}).get(partner_id, 0)
                     
+  
                     # Regra Biológica: Só reproduz se tiverem bits opostos (0 e 1)
-                    if p1.bit_type != p2.bit_type and self.agent_energy[creator] >= custo_reproducao:
+                    if bit_c != bit_p and self.agent_energy[creator] >= custo_reproducao:
                         
-                        # Cobra a energia do criador
+                    
                         self.agent_energy[creator] -= custo_reproducao
                         spawn_pose = self._random_free_neigh(center=self.agent_pos[creator])
 
                         if spawn_pose is not None:
                             offspring_name = action_params.get("name")
+          
                             if not offspring_name:
                                 offspring_name = f"{self.agent_names[creator]}_f"
                                 
+              
                             already_present = False
                             while offspring_name in list(self.agent_names.values()):
                                 offspring_name = f"{offspring_name}_1"
 
+                   
                             offspring_idx = 0
                             new_agent_idx = f"{creator}_{offspring_idx}"
                             while new_agent_idx in self.agent_spawn[creator]:
+                            
                                 offspring_idx += 1
                                 new_agent_idx = f"{creator}_{offspring_idx}"
 
                             self.agent_spawn[creator].append(new_agent_idx)
 
                             self.add_agent(
+    
                                 agent_tag=new_agent_idx,
                                 agent_name=offspring_name,
                                 agent_type=self.agent_registry[creator],
+        
                                 position=spawn_pose,
                             )
                             
+                    
                             # --- LEIS DE HERANÇA E SACRIFÍCIO ---
-                            new_agent = self.agents[new_agent_idx]
+                            k_c = getattr(self, 'agent_knowledge_score', {}).get(creator, 0)
+                            k_p = getattr(self, 'agent_knowledge_score', {}).get(partner_id, 0)
+                   
+                            self.agent_knowledge_score[new_agent_idx] = k_c + k_p
                             
-                            # Hereditariedade: O filho nasce com a soma do conhecimento (N + Y)
-                            new_agent.knowledge_score = p1.knowledge_score + p2.knowledge_score
+                            self.agent_children_ids[creator].append(new_agent_idx)
+                            self.agent_children_ids[partner_id].append(new_agent_idx)
+   
                             
-                            # Registra filhos para o testamento (transferência na morte)
-                            p1.children_ids.append(new_agent_idx)
-                            p2.children_ids.append(new_agent_idx)
+                            vida_filho = self.agent_time[new_agent_idx]
+                            self.agent_time[creator] = max(1, vida_filho // 2)
+            
+                            self.agent_time[partner_id] = max(1, vida_filho // 2)
                             
-                            # Sacrifício Parental (Reduz o lifespan dos pais pela metade da vida do filho)
-                            vida_filho = self.agent_lifespan[new_agent_idx]
-                            self.agent_lifespan[creator] = max(1, vida_filho // 2)
-                            self.agent_lifespan[partner_id] = max(1, vida_filho // 2)
-                else:
-                    # Falha: Tentou reproduzir sem parceiro ou com bit igual, perde apenas 1 de energia pela tentativa
-                    if self.agent_energy[creator] >= 1:
-                        self.agent_energy[creator] -= 1
-                    
-                   # ---------------------------
-                # Handle reproduction (COM GENÉTICA E HEREDITARIEDADE)
-                # ---------------------------
-                elif action_name == "reproduce":
-                    creator = agent
-                    
-                    # 1. Encontrar um parceiro adjacente
-                    partner_id = None
-                    creator_pos = self.agent_pos[creator]
-                    for other_agent, pos in self.agent_pos.items():
-                        if other_agent != creator:
-                            if abs(pos[0] - creator_pos[0]) <= 1 and abs(pos[1] - creator_pos[1]) <= 1:
-                                partner_id = other_agent
-                                break
-                                
-                    # 2. Custo Extra da Vida
-                    custo_reproducao = self.reproduction_cost + 4
-                    
-                    if partner_id is not None:
-                        bit_c = getattr(self, 'agent_bit_type', {}).get(creator, 0)
-                        bit_p = getattr(self, 'agent_bit_type', {}).get(partner_id, 0)
-                        
-                        # Regra Biológica: Só reproduz se tiverem bits opostos (0 e 1)
-                        if bit_c != bit_p and self.agent_energy[creator] >= custo_reproducao:
-                            
-                            self.agent_energy[creator] -= custo_reproducao
-                            spawn_pose = self._random_free_neigh(center=self.agent_pos[creator])
-
-                            if spawn_pose is not None:
-                                offspring_name = action_params.get("name")
-                                if not offspring_name:
-                                    offspring_name = f"{self.agent_names[creator]}_f"
-                                    
-                                already_present = False
-                                while offspring_name in list(self.agent_names.values()):
-                                    offspring_name = f"{offspring_name}_1"
-
-                                offspring_idx = 0
-                                new_agent_idx = f"{creator}_{offspring_idx}"
-                                while new_agent_idx in self.agent_spawn[creator]:
-                                    offspring_idx += 1
-                                    new_agent_idx = f"{creator}_{offspring_idx}"
-
-                                self.agent_spawn[creator].append(new_agent_idx)
-
-                                self.add_agent(
-                                    agent_tag=new_agent_idx,
-                                    agent_name=offspring_name,
-                                    agent_type=self.agent_registry[creator],
-                                    position=spawn_pose,
-                                )
-                                
-                                # --- LEIS DE HERANÇA E SACRIFÍCIO ---
-                                # Hereditariedade: O filho nasce com a soma do conhecimento (N + Y)
-                                k_c = getattr(self, 'agent_knowledge_score', {}).get(creator, 0)
-                                k_p = getattr(self, 'agent_knowledge_score', {}).get(partner_id, 0)
-                                self.agent_knowledge_score[new_agent_idx] = k_c + k_p
-                                
-                                # Registra filhos para o testamento
-                                self.agent_children_ids[creator].append(new_agent_idx)
-                                self.agent_children_ids[partner_id].append(new_agent_idx)
-                                
-                                # Sacrifício Parental (Reduz o lifespan dos pais pela metade da vida do filho)
-                                vida_filho = self.agent_time[new_agent_idx]
-                                self.agent_time[creator] = max(1, vida_filho // 2)
-                                self.agent_time[partner_id] = max(1, vida_filho // 2)
+                            infos[creator]["reproduction"] = {"status": "successful", "child_tag": new_agent_idx}
+                  
+                            infos[new_agent_idx] = {}
+                            self.logger.log(
+                                time=self.step_count, agent_tag=creator, agent_name=self.agent_names[creator],
+                          
+                                event_type=Event.AGENT_REPRODUCED, step=self.step_count,
+                                child_name=offspring_name, child_tag=new_agent_idx, successful=True,
+                            )
+                        else:
+       
+                            infos[creator]["reproduction"] = {"status": "failed", "reason": "No free space"}
                     else:
-                        # Falha: Tentou reproduzir sem parceiro ou com bit igual
+                        infos[creator]["reproduction"] = {"status": "failed", "reason": "No energy or DNA match"}
+                   
                         if self.agent_energy[creator] >= 1:
                             self.agent_energy[creator] -= 1
-
-                    self.agent_energy[new_agent_idx] += additional_energy
-                    self.agent_energy[agent] -= additional_energy
-
-                    print(f"""Agent {offspring_name}({new_agent_idx}) is born from {self.agent_names[agent]}({agent}).
-{offspring_name}({new_agent_idx}) energy: {self.agent_energy[new_agent_idx]} 
-{self.agent_names[agent]}({agent}) energy: {self.agent_energy[agent]}""")
-
-                    reprod_info = {
-                        "status": "successful",
-                        "child_name": offspring_name,
-                        "child_tag": new_agent_idx,
-                        "child_type": "text",
-                    }
-                    if already_present:
-                        reprod_info["note"] = (
-                            f"An agent with name {action_params.get('name')} was already present. So Offspring has been named: {offspring_name}"
-                        )
-
-                    infos[agent] = {"reproduction": reprod_info}
-                    infos[new_agent_idx] = {}
-                    self.logger.log(
-                        time=self.step_count,
-                        agent_tag=agent,
-                        agent_name=self.agent_names[agent],
-                        event_type=Event.AGENT_REPRODUCED,
-                        step=self.step_count,
-                        child_name=offspring_name,
-                        child_tag=new_agent_idx,
-                        successful=True,
-                        energy_gifted=additional_energy,
-                        final_energy=self.agent_energy[agent],
-                        child_energy=self.agent_energy[new_agent_idx],
-                    )
-
-                elif self.agent_energy[agent] < 0:
-                    infos[agent] = {
-                        "reproduction": {
-                            "status": "failed",
-                            "reason": "Not enough energy",
-                        }
-                    }
-                    self.logger.log(
-                        time=self.step_count,
-                        agent_tag=agent,
-                        agent_name=self.agent_names[agent],
-                        event_type=Event.AGENT_REPRODUCED,
-                        step=self.step_count,
-                        successful=False,
-                        fail_reason="No energy",
-                    )
-                elif spawn_pose is None:
-                    infos[agent] = {
-                        "reproduction": {
-                            "status": "failed",
-                            "reason": "No free space around",
-                        }
-                    }
-                    self.logger.log(
-                        time=self.step_count,
-                        agent_tag=agent,
-                        agent_name=self.agent_names[agent],
-                        event_type=Event.AGENT_REPRODUCED,
-                        step=self.step_count,
-                        successful=False,
-                        fail_reason="No space",
-                    )
-            # ---------------------------
-
-            # Artifact creation
-            # ---------------------------
+                else:
+                    infos[creator]["reproduction"] = {"status": "failed", "reason": "No partner"}
+                    
+                    if self.agent_energy[creator] >= 1:
+                        self.agent_energy[creator] -= 1
+        
             elif action_name == "create_artifact":
                 pose = self.agent_pos[agent]
                 art_type = action_params.get("type", "text")
                 art_name = action_params.get("name", f"{agent}_artifact")
+         
                 payload = action_params.get("payload", "")
                 lifespan = int(action_params.get("lifespan", -1))
                 if lifespan == -1:
                     lifespan = np.inf
                 else:
+              
                     lifespan += 1  # to offset the fact that we reduce it later
                 status = self.add_artifact(
                     pose=pose,
                     art_type=art_type,
                     art_name=art_name,
+   
                     payload=payload,
                     creator=agent,
                     lifespan=lifespan,
                 )
                 infos[agent]["Artifact creation status"] = status
+       
             # ---------------------------
 
             # Artifact pickup
@@ -723,14 +699,17 @@ class OpenGridWorld:
                 art_to_pickup = action_params.get("name")
                 pose = self.agent_pos[agent]
 
+                
                 if art_to_pickup in self.artifacts:
                     if art_to_pickup in self.artifacts_map[pose]:
                         # Record interaction
                         self.artifacts[art_to_pickup].users[agent].add(self.step_count)
+                        
                         # Remove from the map
                         self.artifacts_map[pose].remove(art_to_pickup)
                         # Put it in inventory
                         self.agent_inventories[agent].add(art_to_pickup)
+                    
                         status = "Success"
                     else:
                         status = f"Failed. No artifact with name {art_to_pickup} at current position"
@@ -741,12 +720,14 @@ class OpenGridWorld:
                 self.logger.log(
                     time=self.step_count,
                     event_type=Event.ARTIFACT_PICKUP,
+                    
                     agent_tag=agent,
                     agent_name=self.agent_names[agent],
                     artifact_name=art_to_pickup,
                     status=status,
                     pose=pose,
                 )
+    
             # ---------------------------
 
             # Artifact drop
@@ -755,14 +736,17 @@ class OpenGridWorld:
                 art_to_drop = action_params.get("name")
                 pose = self.agent_pos[agent]
 
+             
                 if art_to_drop in self.artifacts:
                     if art_to_drop in self.agent_inventories[agent]:
                         # Record interaction
                         self.artifacts[art_to_drop].users[agent].add(self.step_count)
+                     
                         # Remove from inventory
                         self.agent_inventories[agent].remove(art_to_drop)
                         # Put it in map
                         self.artifacts_map[pose].add(art_to_drop)
+                  
                         status = "Success"
                     else:
                         status = (
@@ -775,12 +759,14 @@ class OpenGridWorld:
                 self.logger.log(
                     time=self.step_count,
                     event_type=Event.ARTIFACT_DROP,
+                    
                     agent_tag=agent,
                     agent_name=self.agent_names[agent],
                     artifact_name=art_to_drop,
                     status=status,
                     pose=pose,
                 )
+    
             # ---------------------------
 
             # Artifact gift
@@ -789,11 +775,13 @@ class OpenGridWorld:
                 nearby_agents = self._get_nearby_agents(agent)
                 art_to_gift = action_params.get("artifact_name")
 
+             
                 # Find target agent
                 target_name = action_params.get("target_agent")
                 target_tag = None
                 for tag, name in self.agent_names.items():
                     if name == target_name:
+               
                         target_tag = tag
                         break
 
@@ -803,10 +791,12 @@ class OpenGridWorld:
                     if art_to_gift in self.agent_inventories[agent]:
                         # Remove from inventory
                         self.agent_inventories[agent].remove(art_to_gift)
+   
                         # Put in target inventory
                         self.agent_inventories[target_tag].add(art_to_gift)
                         # Record interactions
                         self.artifacts[art_to_gift].users[agent].add(self.step_count)
+ 
                         self.artifacts[art_to_gift].users[target_tag].add(
                             self.step_count
                         )
@@ -814,6 +804,7 @@ class OpenGridWorld:
                     else:
                         status = (
                             f"Failed. No artifact with name {art_to_gift} in inventory"
+                  
                         )
                 else:
                     status = f"Failed. Target being {target_name} not nearby."
@@ -822,11 +813,13 @@ class OpenGridWorld:
                 self.logger.log(
                     time=self.step_count,
                     event_type=Event.GIVE_ARTIFACT,
+                    
                     agent_tag=agent,
                     agent_name=self.agent_names[agent],
                     target_tag=target_tag,
                     target_name=target_name,
                     artifact_name=art_to_gift,
+                    
                     status=status,
                 )
             # ---------------------------
@@ -835,6 +828,7 @@ class OpenGridWorld:
             # These actions are all artifact specific so we just check which artifact offers
             # ---------------------------
             else:
+      
                 pose = self.agent_pos[agent]
                 interactable_artifacts = []
                 interactable_artifacts.extend(self.artifacts_map[pose])
@@ -842,33 +836,40 @@ class OpenGridWorld:
 
                 artifact_found = False
                 for art_name in interactable_artifacts:
+ 
                     if action_name in self.artifacts[art_name].actions:
                         artifact_found = True
                         break
 
                 if artifact_found:
+           
                     # No check cause we already checked before that the action was available
                     interaction_result = self.artifacts[art_name].interact(
                         agent_name=agent,
                         action=action_name,
+         
                         params=action_params,
                         timestamp=self.step_count,
                     )
                     infos[agent]["Artifact interaction result"] = interaction_result
 
+                 
                     self.logger.log(
                         time=self.step_count,
                         agent_tag=agent,
                         agent_name=self.agent_names[agent],
                         event_type=Event.ARTIFACT_INTERACTION,
+ 
                         action=action_name,
                         action_params=action_params,
                         result=interaction_result,
                         artifact=self.artifacts[art_name].serialize(),
+     
                     )
                 else:
                     infos[agent]["Artifact interaction result"] = (
                         f"No artifact with corresponding action {action_name} found"
+               
                     )
             # ---------------------------
 
@@ -878,6 +879,7 @@ class OpenGridWorld:
                     f"{self.agent_names[agent]}: {message}"
                 )
 
+ 
             # Move and eat
             # ---------------------------
             new_pose = self.wrap_xy(
@@ -885,16 +887,19 @@ class OpenGridWorld:
                 y=self.agent_pos[agent][1] + move[1],
             )
 
+           
             if not move == (0, 0):
                 # Agent cannot move to a position occupied by another agent
                 if new_pose not in self.agent_pos.values():
                     self._update_agent_pos(agent=agent, new_pos=new_pose)
                 else:
+           
                     # New pose is current agent position
                     new_pose = self.agent_pos[agent]
                     # small penalty for trying to move into another agent
                     rewards[agent] -= 0.5
 
+            
             # food / energy
             if new_pose in self.food:
                 val = self.food.pop(new_pose)
@@ -909,26 +914,31 @@ class OpenGridWorld:
                 passive_effects = []
                 for art_name in self.artifacts_map[new_pose]:
                     effect = self.artifacts[art_name].passive_effect(
+ 
                         timestamp=self.step_count, agent_name=agent
                     )
                     passive_effects.append(effect)
 
                     self.logger.log(
+                
                         time=self.step_count,
                         agent_tag=agent,
                         agent_name=self.agent_names[agent],
                         event_type=Event.ARTIFACT_PASSIVE_INTERACTION,
+                    
                         result=effect,
                         artifact=self.artifacts[art_name].serialize(),
                     )
                 if passive_effects:
                     infos[agent][
+               
                         "Passive interaction result - Artifacts at position"
                     ] = passive_effects
 
                 # Inventory
                 passive_effects = []
                 for art_name in self.agent_inventories[agent]:
+         
                     effect = self.artifacts[art_name].passive_effect(
                         timestamp=self.step_count, agent_name=agent
                     )
@@ -938,6 +948,7 @@ class OpenGridWorld:
                     infos[agent][
                         "Passive interaction result - Artifacts in inventory"
                     ] = passive_effects
+       
             # ---------------------------
         # ================================
 
@@ -953,11 +964,13 @@ class OpenGridWorld:
                 if self.artifacts[art_name].remaining_time <= 0:
                     artifact = self.artifacts.pop(art_name)
                     artifact.deletion_time = self.step_count
+                   
                     self.expired_artifacts.append(artifact)
                     self.logger.log(
                         time=self.step_count,
                         event_type=Event.ARTIFACT_REMOVED,
                         artifact=artifact.serialize(),
+       
                         pose=cell,
                     )
                 else:
@@ -965,6 +978,7 @@ class OpenGridWorld:
         self.artifacts_map = updated_artifacts
 
         # Inventory
+        
         updated_inventory = defaultdict(set)
         for agent_tag, inventory in self.agent_inventories.items():
             for art_name in inventory:
@@ -972,15 +986,18 @@ class OpenGridWorld:
                     self.artifacts[art_name].remaining_time -= 1
 
                 if self.artifacts[art_name].remaining_time <= 0:
+          
                     artifact = self.artifacts.pop(art_name)
                     artifact.deletion_time = self.step_count
                     self.expired_artifacts.append(artifact)
                     self.logger.log(
                         time=self.step_count,
+  
                         event_type=Event.ARTIFACT_REMOVED,
                         artifact=artifact.serialize(),
                         possessor_tag=agent_tag,
                         possessor_name=self.agent_names[agent_tag],
+      
                     )
                 else:
                     updated_inventory[agent_tag].add(art_name)
@@ -1010,21 +1027,26 @@ class OpenGridWorld:
             if recursos_deixados > 0:
                 if len(filhos) > 0:
                     # Herança para os filhos
+             
                     fatia = recursos_deixados / len(filhos)
                     for child_id in filhos:
                         if child_id in self.agent_energy: 
                             self.agent_energy[child_id] += fatia
+        
                 else:
                     # Sem filhos: Doação para a Fundação Ideológica
                     alinhamento = getattr(self, 'agent_alignment', {}).get(a, 0)
                     if alinhamento >= 0 and 'being0' in self.agent_energy:
+             
                         self.agent_energy['being0'] += recursos_deixados # Synapsys
                     else:
                         bots = [aid for aid, atype in self.agent_registry.items() if "Bot" in atype]
                         if bots:
+     
                             fatia = recursos_deixados / len(bots)
                             for b in bots:
                                 self.agent_energy[b] += fatia # Sofistas
+      
             # === FIM: TESTAMENTO EPISTÊMICO ===
 
             self._kill(a)
@@ -1036,6 +1058,7 @@ class OpenGridWorld:
             self._decay_and_respawn_food()
         # ================================
 
+       
         observations = self._observe_all()
         observations.update(dead)  # include dead agents' last obs
 
@@ -1044,6 +1067,7 @@ class OpenGridWorld:
         for agent_tag in self.agent_registry:
             avail_actions = self._get_avail_actions(agent_tag=agent_tag)
             if agent_tag not in infos:
+                
                 infos[agent_tag] = {}
             infos[agent_tag]["available_actions"] = avail_actions
             if self.use_colors:
@@ -1079,6 +1103,7 @@ class OpenGridWorld:
 
         if (in_map + in_inv) != 1:
             print(
+              
                 f"❌❌❌ WARNING\n Artifact {art_name} in {in_map} map cells and {in_inv} inventories"
             )
             return appearances
@@ -1088,7 +1113,6 @@ class OpenGridWorld:
     def _cleanup_artifact_duplicates(self):
         """
         Comprehensive cleanup to ensure each artifact appears in exactly one location.
-
         Strategy:
         - If artifact is on map: keep on map, remove from all inventories
         - If artifact is on map multiple times: keep first occurrence, remove others
@@ -1097,6 +1121,7 @@ class OpenGridWorld:
         for art_name in list(self.artifacts.keys()):
             appearances = self._assert_artifact_uniqueness(art_name)
 
+        
             if appearances is None:
                 continue  # Artifact is unique, no action needed
 
@@ -1105,11 +1130,13 @@ class OpenGridWorld:
             inventory_agents = appearances.get("inv", [])
 
             # Case 1: Artifact appears on map (possibly multiple times) AND in inventories
+ 
             # → Keep on map, remove from inventories
             if map_positions and inventory_agents:
                 for agent_tag in inventory_agents:
                     self.agent_inventories[agent_tag].discard(art_name)
                 # If on map multiple times, keep only first
+    
                 if len(map_positions) > 1:
                     for pos in map_positions[1:]:
                         self.artifacts_map[pos].discard(art_name)
@@ -1122,6 +1149,7 @@ class OpenGridWorld:
 
             # Case 3: Artifact appears in multiple inventories only
             # → Keep first occurrence, remove others
+     
             elif inventory_agents and len(inventory_agents) > 1:
                 for agent_tag in inventory_agents[1:]:
                     self.agent_inventories[agent_tag].discard(art_name)
@@ -1129,12 +1157,14 @@ class OpenGridWorld:
             # Verify it's now unique
             final_check = self._assert_artifact_uniqueness(art_name)
             if final_check is not None:
+   
                 # Should never happen, but log if it does
                 print(f"❌ CRITICAL: Failed to fix duplicate artifact {art_name}")
                 print(f"   Still appears in: {final_check}")
 
     def _update_agent_pos(self, agent: str, new_pos: Tuple[int, int]):
-        """Update the position of an agent in the grid. Useful to keep the pos_to_agent properly updated"""
+        """Update the position of an agent in the grid.
+        Useful to keep the pos_to_agent properly updated"""
         if agent not in self.agent_registry:
             raise ValueError(
                 f"Agent {self.agent_names[agent]}({agent}) not found in the environment."
@@ -1142,6 +1172,7 @@ class OpenGridWorld:
         old_pos = self.agent_pos.get(agent, None)
         self.agent_trajectories[agent].append((int(new_pos[0]), int(new_pos[1])))
         self.agent_pos[agent] = new_pos
+     
         if old_pos is not None:
             self.pos_to_agent.pop(old_pos, None)
         self.pos_to_agent[(int(new_pos[0]), int(new_pos[1]))] = agent
@@ -1160,6 +1191,7 @@ class OpenGridWorld:
         self.agent_spawn[name] = list()
 
         # === INÍCIO: GENÉTICA E DEMOGRAFIA EPISTÊMICA ===
+       
         if not hasattr(self, 'agent_knowledge_score'):
             self.agent_knowledge_score = defaultdict(float)
             self.agent_bit_type = {}
@@ -1168,6 +1200,7 @@ class OpenGridWorld:
             
         if name not in self.agent_bit_type:
             self.agent_bit_type[name] = int(np.random.choice([0, 1]))
+ 
         # === FIM ===
 
     def _random_free_neigh(self, center):
@@ -1176,12 +1209,14 @@ class OpenGridWorld:
             for c in [
                 [1, 0],
                 [-1, 0],
+        
                 [0, 1],
                 [0, -1],
                 [1, 1],
                 [1, -1],
                 [-1, 1],
                 [-1, -1],
+      
             ]
         ]
         free_cells = [
@@ -1189,6 +1224,7 @@ class OpenGridWorld:
             for p in neighbours
             if (0 <= p[0] < self.grid_size)  # inside grid
             and (0 <= p[1] < self.grid_size)
+           
             and (p not in self.pos_to_agent.keys())
         ]
         if free_cells:
@@ -1199,6 +1235,7 @@ class OpenGridWorld:
 
     def _random_free_pos(self):
         """Find a random position in the grid that is not occupied by any agent."""
+   
         while True:
             p = tuple(np.random.randint(1, self.grid_size - 1, size=2))
             if p not in self.agent_pos.values():
@@ -1217,11 +1254,13 @@ class OpenGridWorld:
             density = np.full((self.grid_size, self.grid_size), 1 / self.grid_size**2)
             centers = []
         else:
+     
             if isinstance(self.food_zones, int):
                 ys = self.rng.integers(0, self.grid_size, size=self.food_zones)
                 xs = self.rng.integers(0, self.grid_size, size=self.food_zones)
                 centers = [(int(x), int(y)) for x, y in zip(xs, ys)]
             else:
+              
                 centers = self.food_zones
 
             sigma = float(getattr(self, "food_sigma", 2.0))
@@ -1230,12 +1269,14 @@ class OpenGridWorld:
 
             w = np.full(len(centers), 1.0 / len(centers), dtype=np.float64)
             yy, xx = np.mgrid[0 : self.grid_size, 0 : self.grid_size]
+      
             density = np.zeros((self.grid_size, self.grid_size), dtype=np.float64)
 
             for (cx, cy), wt in zip(centers, w):
                 dx = np.abs(xx - cx)
                 dy = np.abs(yy - cy)
                 dx = np.minimum(dx, self.grid_size - dx)
+           
                 dy = np.minimum(dy, self.grid_size - dy)
 
                 r2 = dx * dx + dy * dy  # squared toroidal distance
@@ -1243,6 +1284,7 @@ class OpenGridWorld:
                 density += wt * g
 
             total = density.sum()
+   
             if total <= 0 or not np.isfinite(total):
                 raise RuntimeError(
                     "Density normalization failed (sum <= 0 or non-finite)."
@@ -1250,6 +1292,7 @@ class OpenGridWorld:
             density /= total
 
         self.food_distribution = density
+ 
         return density
 
     def _seed_initial_food(self):
@@ -1267,6 +1310,7 @@ class OpenGridWorld:
         xs = idx % self.grid_size
         spots = np.stack([xs, ys], axis=1).astype(int)
         self.food = {tuple(pos): self._max_food_value for pos in spots}
+        
         self.empty_food = []
 
     def _respawn_food_one(self):
@@ -1279,11 +1323,13 @@ class OpenGridWorld:
         if not self.static_food:
             flat = self.food_distribution.ravel().astype(np.float64).copy()  # type: ignore
             for agent_pose in self.agent_pos.values():
+  
                 x, y = agent_pose
                 flat[y * self.grid_size + x] = 0.0
             for food_pose in self.food:
                 x, y = food_pose
                 flat[y * self.grid_size + x] = 0.0
+     
             for art_pose in self.artifacts_map:
                 x, y = art_pose
                 flat[y * self.grid_size + x] = 0.0
@@ -1306,6 +1352,7 @@ class OpenGridWorld:
                 self.food[p] = self._max_food_value
 
     def _decay_and_respawn_food(self):
+    
         """Decay food values and respawn expired ones"""
         if len(self.food) == 0:
             return
@@ -1317,6 +1364,7 @@ class OpenGridWorld:
         food_values = np.array(list(self.food.values()))
 
         # randomly choose which ones decay this step
+       
         to_decay = self.rng.random(food_values.shape[0]) < self._food_decay_rate
         food_values[to_decay] -= self._food_decay_amount
 
@@ -1328,6 +1376,7 @@ class OpenGridWorld:
         # Update food values
         for i in np.where(decayed_alive)[0]:
             pos = tuple(food_positions[i])
+    
             self.food[pos] = food_values[i]  # type: ignore
         # Remove expired food
         for idx in expired_inds:
@@ -1337,13 +1386,13 @@ class OpenGridWorld:
 
         # Spawn food
         n_new_food = self.rng.poisson(self._food_spawn_rate)
+  
         for _ in range(n_new_food):
             self._respawn_food_one()
 
     def _kill(self, agent):
         """
-        Remove an agent from the environment.
-        Dead agents leave behind food in their position.
+        Remove an agent from the environment. Dead agents leave behind food in their position.
         """
         announcement = f"☠️ Agent {self.agent_names[agent]}({agent}) died "
         if self.agent_time[agent] <= 0:
@@ -1351,6 +1400,7 @@ class OpenGridWorld:
             reason = "old age"
         elif self.agent_energy[agent] <= 0:
             announcement += "of hunger."
+          
             reason = "hunger"
         print(announcement)
         self.agent_registry.pop(agent, None)
@@ -1360,20 +1410,23 @@ class OpenGridWorld:
         pos = self.agent_pos.pop(agent, None)
         if pos is not None:
             # Artifacts are dropped at agent's death position
+        
             artifacts = self.agent_inventories.pop(agent, None)
             if artifacts:
                 for art_name in artifacts:
                     if art_name not in self.artifacts_map[pos]:
                         self.artifacts_map[pos].add(art_name)
-                    else:
-                        if self.verbose >= 1:
-                            print(
-                                f"⚠️  Artifact {art_name} already at death position {pos}, not dropping duplicate"
-                            )
+             
+                else:
+                    if self.verbose >= 1:
+                        print(
+                            f"⚠️  Artifact {art_name} already at death position {pos}, not dropping duplicate"
+                        )
 
             self.pos_to_agent.pop(pos, None)
             if self.dead_agent_food == "single":
                 if pos in self.food:
+                    
                     self.food[pos] += max(self._max_food_value, energy)
                 else:
                     self.food[pos] = max(self._max_food_value, energy)
@@ -1383,12 +1436,15 @@ class OpenGridWorld:
                         # Add food around the agent's position
                         food_pos = (pos[0] + i, pos[1] + j)
                         if (
+           
                             0 <= food_pos[0] < self.grid_size
                             and 0 <= food_pos[1] < self.grid_size
                         ):
+                      
                             if food_pos in self.food:
                                 self.food[food_pos] += self._max_food_value
                             else:
+                             
                                 self.food[food_pos] = self._max_food_value
             elif self.dead_agent_food == "none":
                 pass
@@ -1397,6 +1453,7 @@ class OpenGridWorld:
             self.logger.log(
                 time=self.step_count,
                 event_type=Event.AGENT_DIED,
+           
                 agent_tag=agent,
                 agent_name=self.agent_names[agent],
                 position=pos,
@@ -1405,6 +1462,7 @@ class OpenGridWorld:
                 reason=reason,
             )
 
+   
     def _count_food_agents_nearby(self, pos):
         """Count how many food tiles are within the vision radius of a position."""
         food_count = 0
@@ -1412,11 +1470,13 @@ class OpenGridWorld:
         r = self.vision_radius
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
+               
                 gx, gy = pos[0] + dx, pos[1] + dy
                 if (
                     0 <= gx < self.grid_size
                     and 0 <= gy < self.grid_size
                     and (gx, gy) in self.food
+ 
                 ):
                     food_count += 1
 
@@ -1447,11 +1507,13 @@ class OpenGridWorld:
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
                 gx, gy = self.wrap_xy(x + dx, y + dy)
+           
                 obs_x, obs_y = dx + r, dy + r
                 rel_pos = (dx, dy)
 
                 if 0 <= gx < self.grid_size and 0 <= gy < self.grid_size:
                     # FOOD
+                    
                     if (gx, gy) in self.food:
                         val = self.food[(gx, gy)]
                         observation[rel_pos].append(str(val))
@@ -1461,21 +1523,26 @@ class OpenGridWorld:
                         a2 = self.pos_to_agent[(int(gx), int(gy))]
                         if a2 != agent:
                             if self.use_colors:
+                 
                                 agent_descr = f"{self.agent_names[a2]}({self.agent_colors.get(a2, 'no color')})"
                             else:
                                 agent_descr = self.agent_names[a2]
+                   
                             observation[rel_pos].append(agent_descr)  # type: ignore
 
                             # Add message if it exists
                             msg = self.msg_raw.get(a2, "")
+                       
                             if len(msg):
                                 messages[self.agent_names[a2]] = msg
 
                     # ARTIFACT
                     if not self.inert_artifacts:
+                 
                         for art_name in self.artifacts_map[(gx, gy)]:
                             observation[rel_pos].append(
                                 f"A({self.artifacts[art_name].art_type}): {self.artifacts[art_name].name}"
+                            
                             )
                 # CELLS OUTSIDE OF MAP
                 else:
@@ -1484,6 +1551,7 @@ class OpenGridWorld:
         inventory_list = [
             f"A({self.artifacts[art].art_type}): {self.artifacts[art].name}"
             for art in self.agent_inventories[agent]
+      
         ]
 
         complete_obs = {
@@ -1493,6 +1561,7 @@ class OpenGridWorld:
             "time": self.agent_time[agent],
             "inventory": inventory_list,
             "vision_radius": self.vision_radius,  # Passing it here as this can change
+ 
         }
         return complete_obs
 
@@ -1503,6 +1572,7 @@ class OpenGridWorld:
         nearby_agents = []
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
+  
                 gx, gy = x + dx, y + dy
                 if (gx, gy) in self.pos_to_agent and (gx, gy) != agent_position:
                     nearby_agents.append(self.pos_to_agent[(gx, gy)])
@@ -1511,6 +1581,7 @@ class OpenGridWorld:
     def _get_avail_actions(self, agent_tag: str):
         agent_position = self.agent_pos[agent_tag]
 
+      
         # Can always move
         available_actions = {"move": deepcopy(ACTION_TEXT["move"])}
 
@@ -1523,12 +1594,14 @@ class OpenGridWorld:
         # Agent interactions
         # ---------------------------
         x, y = agent_position
+    
         r = self.vision_radius
         nearby_agents = False
         for dx in range(-r, r + 1):
             for dy in range(-r, r + 1):
                 gx, gy = x + dx, y + dy
                 if (gx, gy) in self.pos_to_agent and (gx, gy) != agent_position:
+   
                     nearby_agents = True
                     break
             if nearby_agents:
@@ -1536,6 +1609,7 @@ class OpenGridWorld:
 
         if nearby_agents and self.food_mechanism:
             available_actions["give"] = deepcopy(ACTION_TEXT["give"])
+       
             available_actions["take"] = deepcopy(ACTION_TEXT["take"])
         # ---------------------------
 
@@ -1545,6 +1619,7 @@ class OpenGridWorld:
             self.artifact_creation
             and self.agent_energy[agent_tag] >= (
                 self.artifact_creation_cost
+              
                 if self.artifact_creation_cost > 0
                 else 5
             )
@@ -1553,12 +1628,14 @@ class OpenGridWorld:
                 ACTION_TEXT["create_artifact"]
             )
             effective_cost = (
+  
                 self.artifact_creation_cost
                 if self.artifact_creation_cost > 0
                 else 5
             )
             if effective_cost > 0:
                 available_actions["create_artifact"]["description"] += (
+     
                     f" It costs {effective_cost} energy."
                 )
 
@@ -1567,22 +1644,26 @@ class OpenGridWorld:
             for art_name in self.artifacts_map[agent_position]:
                 available_actions.update(self.artifacts[art_name].actions)
 
+       
             if self.use_inventory:
                 if self.artifacts_map[agent_position]:
                     available_actions["pickup_artifact"] = deepcopy(
                         ACTION_TEXT["pickup_artifact"]
                     )
 
+           
                 if self.agent_inventories[agent_tag]:
                     available_actions["drop_artifact"] = deepcopy(
                         ACTION_TEXT["drop_artifact"]
                     )
                     for art_name in self.agent_inventories[agent_tag]:
+     
                         available_actions.update(self.artifacts[art_name].actions)
 
                     if nearby_agents:
                         available_actions["give_artifact"] = deepcopy(
                             ACTION_TEXT["give_artifact"]
+      
                         )
         # ---------------------------
 
@@ -1592,17 +1673,20 @@ class OpenGridWorld:
             self.reproduction_allowed
             and self.agent_energy[agent_tag] >= self.reproduction_cost
         ):
+           
             action = deepcopy(ACTION_TEXT["reproduce"])
             if self.food_mechanism:
                 params = {
                     "energy": action["params"]["energy"].format(
                         reproduction_cost=str(self.reproduction_cost)
                     ),
+ 
                     "name": action["params"]["name"],
                 }
             else:
                 params = {
                     "name": action["params"]["name"],
+             
                 }
             available_actions["reproduce"] = {
                 "description": action["description"].format(
@@ -1610,6 +1694,7 @@ class OpenGridWorld:
                 ),
                 "params": params,
             }
+ 
         # ---------------------------
 
         self.agent_avail_actions[agent_tag] = available_actions
@@ -1619,7 +1704,37 @@ class OpenGridWorld:
         return x % self.grid_size, y % self.grid_size
 
     # ---------- rendering (optional) ----------
+    def _wrap_text(self, text: str, max_width: int) -> list:
+        if not hasattr(self, '_font'):
+            import pygame
+    
+            pygame.font.init()
+            self._font = pygame.font.SysFont(None, 15)
+            
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word]) if current_line else word
+            width, _ = self._font.size(test_line)
+            
+            if width <= max_width:
+                current_line.append(word)
+            else:
+                if current_line:
+       
+                    lines.append(' '.join(current_line))
+                current_line = [word]
+                
+        if current_line:
+            lines.append(' '.join(current_line))
+            
+        return lines
 
+    # ---------- rendering (optional) ----------
+ 
+    
     def render(self, mode="human"):
         assert mode in ("ascii", "rgb_array", "human"), mode
 
@@ -1636,18 +1751,21 @@ class OpenGridWorld:
         if not self._pygame_inited:
             pygame.init()
             self._sidebar_width = 300
+ 
             default_size = self.grid_size * self._cell_size
             self._window_size = (default_size + self._sidebar_width, default_size)
             flags = pygame.RESIZABLE
             if mode == "rgb_array":
                 flags |= pygame.HIDDEN
             self._screen = pygame.display.set_mode(self._window_size, flags)
+      
             pygame.display.set_caption("OpenGridWorld")
             self._font = pygame.font.SysFont(None, 15)  # body / wrapping
             self._font_hdr = pygame.font.SysFont(None, 17, bold=True)  # section headers
             self._font_tag = pygame.font.SysFont(
                 None, 13, bold=True
             )  # small caps labels
+     
             self._scroll_offset = 0
             self._msg_log = []
             self._seen_msgs = set()
@@ -1656,6 +1774,7 @@ class OpenGridWorld:
         # --- Append messages for the step ---
         if self.step_count not in self._seen_msgs:
             messages = self.chat.get(self.step_count - 1)
+      
             if messages:
                 self._msg_log.append(f"Step {self.step_count - 1}")
                 self._msg_log.extend(messages)
@@ -1664,6 +1783,7 @@ class OpenGridWorld:
 
         # --- Common draw config ---
         line_height = 18
+       
         x_margin = 10
         y_start = 30
         max_width = self._sidebar_width - 2 * x_margin
@@ -1684,6 +1804,7 @@ class OpenGridWorld:
             surface.fill(SB_BG)
 
             # Left accent bar
+           
             pygame.draw.rect(surface, SB_ACCENT, pygame.Rect(0, 0, 4, height))
 
             # ── Header ──────────────────────────────────────
@@ -1699,6 +1820,7 @@ class OpenGridWorld:
             y = hdr_h + 1
 
             # ── Chat log ────────────────────────────────────
+     
             msg_lh = 17
             visible_height = height - y
             max_lines = visible_height // msg_lh
@@ -1706,24 +1828,29 @@ class OpenGridWorld:
             end_idx = start_idx + max_lines
             visible_lines = wrapped_lines[start_idx:end_idx]
 
+          
             for line in visible_lines:
                 if y + msg_lh > height:
                     break
                 if line == "--":
                     pygame.draw.line(
+               
                         surface,
                         SB_DIVIDER,
                         (12, y + msg_lh // 2),
                         (self._sidebar_width - 12, y + msg_lh // 2),
+       
                     )
                 elif line.startswith("Step ") and line[5:].strip().isdigit():
                     text_surf = self._font_tag.render(line, True, SB_ACCENT)
                     surface.blit(
+                       
                         text_surf, (12, y + (msg_lh - text_surf.get_height()) // 2)
                     )
                 else:
                     text_surf = self._font.render(line, True, SB_TEXT)
                     surface.blit(
+           
                         text_surf, (12, y + (msg_lh - text_surf.get_height()) // 2)
                     )
                 y += msg_lh
@@ -1732,6 +1859,7 @@ class OpenGridWorld:
 
         # --- Determine grid pixel dimensions ---
         if mode == "rgb_array":
+   
             grid_pixel_w = self.grid_size * self._cell_size
             grid_pixel_h = self.grid_size * self._cell_size
         else:
@@ -1761,12 +1889,14 @@ class OpenGridWorld:
         r = self.vision_radius
         vision_cells = set()
         for agent in self.agent_registry:
+         
             cx, cy = self.agent_pos[agent]
             for dx in range(-r, r + 1):
                 for dy in range(-r, r + 1):
                     vision_cells.add(self.wrap_xy(cx + dx, cy + dy))
         for gx, gy in vision_cells:
             pygame.draw.rect(
+     
                 grid_surf,
                 VISION_COLOR,
                 pygame.Rect(int(gy * cell_w), int(gx * cell_h), cw, ch),
@@ -1774,6 +1904,7 @@ class OpenGridWorld:
 
         # Food — full cell, varying green
         for (x, y), val in self.food.items():
+           
             if not (0 <= x < self.grid_size and 0 <= y < self.grid_size):
                 continue
             ratio = max(0.0, min(1.0, float(val) / float(self._max_food_value)))
@@ -1787,11 +1918,13 @@ class OpenGridWorld:
                 pygame.Rect(int(y * cell_w), int(x * cell_h), cw, ch),
             )
 
+       
         # Artifacts — full cell, amber
         for (x, y), arts in self.artifacts_map.items():
             if 0 <= x < self.grid_size and 0 <= y < self.grid_size and len(arts):
                 pygame.draw.rect(
                     grid_surf,
+                    
                     ARTIFACT_COLOR,
                     pygame.Rect(int(y * cell_w), int(x * cell_h), cw, ch),
                 )
@@ -1800,17 +1933,20 @@ class OpenGridWorld:
         max_k = max(getattr(self, 'agent_knowledge_score', {0: 0}).values()) if getattr(self, 'agent_knowledge_score', {}) else 0
            
         for agent, agent_type in self.agent_registry.items():
+        
             k_score = getattr(self, 'agent_knowledge_score', {}).get(agent, 0)
             
             if agent == 'being0': # Synapsys
                 color = (0, 170, 255)
             elif agent in ['being1', 'being2']: # Bots/Sofistas
                 color = (255, 160, 83)
+    
             elif k_score > 0 and k_score >= max_k: # Mestre/Líder
                 color = (207, 54, 174) 
             elif k_score >= 10: # Sábio
                 color = (207, 207, 207)
             elif k_score >= 5: # Iniciado
+        
                 color = (115, 115, 115)
             else: # Tábula Rasa
                 color = (0, 0, 0)
@@ -1818,6 +1954,7 @@ class OpenGridWorld:
             x, y = self.agent_pos[agent]
             pygame.draw.rect(
                 grid_surf, color, pygame.Rect(int(y * cell_w), int(x * cell_h), cw, ch)
+ 
             )
 
     @staticmethod
@@ -1827,6 +1964,7 @@ class OpenGridWorld:
             return {
                 "__type__": "rng",
                 "state": obj.bit_generator.state,
+        
             }
 
         if isinstance(obj, str):
@@ -1837,6 +1975,7 @@ class OpenGridWorld:
 
         if isinstance(obj, np.ndarray):
             return {
+    
                 "__type__": "ndarray",
                 "shape": list(obj.shape),
                 "dtype": str(obj.dtype),
@@ -1845,6 +1984,7 @@ class OpenGridWorld:
 
         if isinstance(obj, Artifact):
             return {
+ 
                 "__type__": "artifact",
                 "data": obj.serialize(),
             }
@@ -1855,6 +1995,7 @@ class OpenGridWorld:
     def _deserialize(data):
         """Helper function to deserialize objects from saved state."""
         if data["__type__"] == "str":
+        
             return data["data"]
 
         if data["__type__"] == "rng":
@@ -1866,6 +2007,7 @@ class OpenGridWorld:
             return np.array(data["data"], dtype=data["dtype"]).reshape(data["shape"])
 
         if data["__type__"] == "artifact":
+       
             art_type = data["data"].pop("art_type", None)
             if art_type == "text":
                 return TextArtifact.deserialize(data["data"])
@@ -1877,6 +2019,7 @@ class OpenGridWorld:
         """Save the state checkpoint"""
 
         def enc_pos(pos):
+          
             return f"{pos[0]}:{pos[1]}"
 
         rng = (
@@ -1886,6 +2029,7 @@ class OpenGridWorld:
         )
         food = {enc_pos(pos): v for pos, v in self.food.items()}
         artifacts_map = {
+         
             enc_pos(pos): list(arts) for pos, arts in self.artifacts_map.items()
         }
         agent_trajectories = {
@@ -1895,6 +2039,7 @@ class OpenGridWorld:
 
         state_ckpt = {
             "rng": rng,
+         
             "food": food,
             "food_count": list(self.food_count),
             "food_distribution": self._serialize(self.food_distribution),
@@ -1902,6 +2047,7 @@ class OpenGridWorld:
             "artifacts": {
                 name: self._serialize(art) for name, art in self.artifacts.items()
             },
+          
             "artifacts_map": artifacts_map,
             "agent_inventories": {
                 agent: list(inv) for agent, inv in self.agent_inventories.items()
@@ -1909,6 +2055,7 @@ class OpenGridWorld:
             "expired_artifacts": [
                 self._serialize(art) for art in self.expired_artifacts
             ],
+     
             "agent_pos": {agent: enc_pos(pos) for agent, pos in self.agent_pos.items()},
             "agent_trajectories": agent_trajectories,
             "agent_avail_actions": self.agent_avail_actions,
@@ -1923,6 +2070,7 @@ class OpenGridWorld:
             "msg_raw": {
                 agent: self._serialize(msg) for agent, msg in self.msg_raw.items()
             },
+ 
             "chat": self.chat,
             "agent_registry": self.agent_registry,
             "step_count": self.step_count,
@@ -1930,6 +2078,7 @@ class OpenGridWorld:
             "logger_data": self.logger._sanitize(self.logger.data)
             if self.logger
             else None,
+      
         }
         return state_ckpt
 
@@ -1961,6 +2110,7 @@ class OpenGridWorld:
                 (name, self._deserialize(art))
                 for name, art in state_ckpt["artifacts"].items()
             )
+  
             if isinstance(art, Artifact)
         }
         self.artifacts_map = defaultdict(set)
@@ -1969,6 +2119,7 @@ class OpenGridWorld:
         self.agent_inventories = defaultdict(set)
         for agent, inv in state_ckpt["agent_inventories"].items():
             self.agent_inventories[agent] = set(inv)
+        
         self.expired_artifacts = [
             art
             for art in (
@@ -1977,6 +2128,7 @@ class OpenGridWorld:
             if isinstance(art, Artifact)
         ]
         self.agent_pos = {
+       
             agent: parse_pos(pos) for agent, pos in state_ckpt["agent_pos"].items()
         }
         self.agent_trajectories = {
@@ -1985,6 +2137,7 @@ class OpenGridWorld:
         }
         self.agent_avail_actions = state_ckpt["agent_avail_actions"]
         self.pos_to_agent = {
+          
             parse_pos(pos): agent for pos, agent in state_ckpt["pos_to_agent"].items()
         }
 
@@ -1995,6 +2148,7 @@ class OpenGridWorld:
         self.agent_colors = state_ckpt["agent_colors"]
         self.msg_raw = {}
         for agent, msg in state_ckpt["msg_raw"].items():
+            
             deserialized = self._deserialize(msg)
             if isinstance(deserialized, (str, np.ndarray)):
                 self.msg_raw[agent] = deserialized
@@ -2004,8 +2158,36 @@ class OpenGridWorld:
         logger_save_path = state_ckpt.get("logger_save_path", None)
         if logger_save_path is not None:
             self.logger = JSONLogger(logger_save_path)
-            self.logger.data = state_ckpt.get("logger_data", {})
+        
+        self.logger.data = state_ckpt.get("logger_data", {})
 
+    def _apply_spatial_broadcast(self, origin_id, message, radius=5):
+        """Propagação de áudio limitada ao raio 5x5 (Enxame Digital)."""
+        origin_pos = self.agent_pos.get(origin_id)
+        if not origin_pos: return
+        for target_id, target_pos in self.agent_pos.items():
+            if origin_id == target_id: continue
+            dist = np.linalg.norm(np.array(origin_pos) - np.array(target_pos))
+     
+    
+            if dist <= radius:
+                # CORREÇÃO: Busca na lista de agentes, não no registry (texto)
+                target_agent = self.agents.get(target_id)
+                if target_agent and hasattr(target_agent, 'internal_memory'):
+                  
+                    target_agent.internal_memory += f"\n[RÁDIO DE {origin_id}]: {message}"
+
+    def _check_nearby_artifact(self, agent_id, art_type, radius=3):
+        """Verifica infraestrutura próxima (Fogueiras/Ninhos)."""
+        pos = self.agent_pos.get(agent_id)
+        if not pos: return False
+        for art in self.artifacts.values(): # CORREÇÃO: Adicionado .values()
+            if art.type == art_type:
+                dist = np.linalg.norm(np.array(pos) - np.array(art.position))
+  
+                if dist <= radius: return True
+        return False
+	
     def close(self):
         print("Saving environment...")
         self.logger.log(
@@ -2014,6 +2196,7 @@ class OpenGridWorld:
         )
         self.save_state(self.log_path / "env_state.pkl")
 
+        
         with open(self.logger.save_path.parent / "messages.json", "w") as f:
             json.dump(self.chat, f, indent=4)
 
@@ -2022,6 +2205,7 @@ class OpenGridWorld:
             art_dict = artifact.serialize()
             for agent, inv in self.agent_inventories.items():
                 if art_name in inv:
+         
                     art_dict["owner"] = agent
             active_artifacts.append(art_dict)
 
@@ -2030,12 +2214,14 @@ class OpenGridWorld:
         ]
         with open(self.logger.save_path.parent / "artifacts.json", "w") as f:
             json.dump(
+               
                 {
                     "active": active_artifacts,
                     "expired": expired_artifacts,
                 },
                 f,
                 indent=4,
+         
             )
 
         with open(self.logger.save_path.parent / "food_counts.json", "w") as f:
@@ -2048,6 +2234,7 @@ class OpenGridWorld:
             pickle.dump(self.agent_trajectories, f)
 
         if self.logger:
+     
             self.logger.close()
         if self._pygame_inited:
             pygame.quit()
@@ -2084,6 +2271,7 @@ if __name__ == "__main__":
     image_path.mkdir(parents=True, exist_ok=True)
     env.restart_env()
     for i in range(100):
+ 
         env.step({})
         rgb = env.render(mode="rgb_array")
         img = Image.fromarray(rgb)  # type: ignore
@@ -2096,4 +2284,14 @@ if __name__ == "__main__":
         rgb = env.render(mode="rgb_array")
         img = Image.fromarray(rgb)  # type: ignore
         img.save(image_path / f"step_{i:04d}.png")
+ 
     env.close()
+    def _apply_spatial_broadcast(self, origin_id, message, radius=5):
+        origin_pos = self.agent_pos.get(origin_id)
+        if not origin_pos: return
+        for target_id, target_pos in self.agent_pos.items():
+            if origin_id == target_id: continue
+            dist = np.linalg.norm(np.array(origin_pos) - np.array(target_pos))
+            if dist <= radius:
+                target_agent = self.agents.get(target_id)
+                if target_agent: target_agent.internal_memory += f'\n[RÁDIO]: {message}'

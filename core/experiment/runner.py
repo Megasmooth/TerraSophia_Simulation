@@ -12,6 +12,7 @@ from pprint import pprint
 from typing import Dict, List
 
 import numpy as np
+import pandas as pd
 from PIL import Image
 
 from core.agents.human_agent import HumanAgent
@@ -355,6 +356,14 @@ class SimulationRunner:
                 max_workers=self.params.run.max_parallel_workers
             ) as executor:
                 for ts in range(self.start_ts, max_ts):
+                    # Injeção Synapsys
+                    for tag, agent in self.agents.items():
+                        ph = getattr(agent, 'phenotype', 'tabula_rasa')
+                        if ph == "sofista" and self.df_arsenal is not None:
+                            agent.internal_memory += f"\n[ARSENAL]: {self.df_arsenal.sample(1).iloc[0]['afirmacao_veneno']}"
+                        elif ph == "erudito" and self.df_jornada is not None:
+                            agent.internal_memory += f"\n[TRIVIUM]: {self.df_jornada.sample(1).iloc[0]['content'][:300]}"
+    
                     print(f"\n=== Timestep {ts} ===")
                     # Here so it starts by rendering even at ts=0
                     self._render(ts=ts)
