@@ -19,7 +19,6 @@ MODEL_MAP = {
     "llama3": "llama3",
 }
 
-
 class LLMRouter:
     def __init__(
         self, model_short: str, ports: Tuple[int] | None, instances: int | None = None
@@ -34,15 +33,13 @@ class LLMRouter:
             llm_client = AgentClient(
                 base_url="http://127.0.0.1:11434/v1", api_key="ollama"
             )
-            # --- FASE 1: MEMÓRIA EXPANDIDA (TESE) ---
             llm_chat_params = {
                 "model": "llama3",
-                "temperature": 0.0,
+                "temperature": 0.9,
                 "response_format": {"type": "json_object"},
-                "num_ctx": 8192,     # Usa a sua RAM de 35GB para manter o histórico de longo prazo
-                "max_tokens": 4096   # Permite raciocínios filosóficos mais longos
+                "max_tokens": 4096,
+                "extra_body": {"num_ctx": 2048}
             }
-            # ----------------------------------------
             self.clients = [(llm_client, llm_chat_params)]
             
         elif "qwen" in self.model_name.lower() or "deepseek" in self.model_name.lower():  # type: ignore
@@ -103,7 +100,7 @@ class LLMRouter:
                 "model": "Qwen/Qwen3-32B",
                 "response_format": {"type": "json_object"},
                 "temperature": 1,
-                "max_tokens": 256,  # Limit output to 256 tokens
+                "max_tokens": 256,
             }
         elif self.model_name == MODEL_MAP["DeepSeek-R1-32"]:
             llm_client = AgentClient(

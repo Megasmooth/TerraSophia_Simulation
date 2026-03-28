@@ -38,8 +38,8 @@ EXPERIMENTS_NAMES = []  # e.g. ['core_run', 'scarcity_run', ...]
 # ---------------------------
 AUDIT = True
 SHOW_STACKTRACES = False
-LLM_PROVIDER = "anthropic"
-LLM_MODEL = "claude-sonnet-4-5-20250929"
+LLM_PROVIDER = "openai"
+LLM_MODEL = "llama3"
 LLM_CHAT_PARAMS = {
     # "response_format": {"type": "json_schema"},
 }

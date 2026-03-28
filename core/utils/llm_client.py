@@ -49,7 +49,7 @@ class LLMClient:
     def _get_openai_client(self) -> OpenAI:
         """Get or create OpenAI client."""
         if self._openai_client is None:
-            self._openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            self._openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"), base_url=os.environ.get("OPENAI_BASE_URL"))
         return self._openai_client
 
     def _get_anthropic_client(self) -> Anthropic:

@@ -38,7 +38,7 @@ class AgentConfig:
         metadata={"help": "Max number of interactions stored per agent"},
     )
     model: str = field(
-        default="claude-sonnet-4-6",
+        default="llama3",
         metadata={"help": "Model name used for agent decision making"},
     )
     obs_style: str = field(
@@ -76,7 +76,7 @@ class AgentConfig:
 
 @dataclass
 class EnvConfig:
-    agent_lifespan: int = field(default=100, metadata={"help": "Max lifespan"})
+    agent_lifespan: int = field(default=500, metadata={"help": "Max lifespan"})
     artifact_creation: bool = field(
         default=True, metadata={"help": "Enable artifact creation"}
     )

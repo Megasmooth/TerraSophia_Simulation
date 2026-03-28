@@ -1,0 +1,244 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.3)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+Carregando Juiz Semântico na RAM (all-MiniLM-L6-v2)...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 9276.44it/s]
+[1mBertModel LOAD REPORT[0m from: sentence-transformers/all-MiniLM-L6-v2
+Key                     | Status     |  | 
+------------------------+------------+--+-
+embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+Traceback (most recent call last):
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/core/experiment/runner.py", line 435, in run
+    self.obs, self.rewards, self.dones, _, self.infos = self.env.step(
+                                                        ^^^^^^^^^^^^^^
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/core/environment/env.py", line 489, in step
+    p1 = self.agents[creator]
+         ^^^^^^^^^^^
+AttributeError: 'OpenGridWorld' object has no attribute 'agents'
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+  built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+  configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      58. 29.100 / 58. 29.100
+  libavcodec     60. 31.102 / 60. 31.102
+  libavformat    60. 16.100 / 60. 16.100
+  libavdevice    60.  3.100 / 60.  3.100
+  libavfilter     9. 12.100 /  9. 12.100
+  libswscale      7.  5.100 /  7.  5.100
+  libswresample   4. 12.100 /  4. 12.100
+  libpostproc    57.  3.100 / 57.  3.100
+Trailing option(s) found in the command: may be ignored.
+[image2 @ 0x64da0027cf00] Could find no file with path '/mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/frames/%05d.png' and index in the range 0-4
+[in#0 @ 0x64da0027ce00] Error opening input: No such file or directory
+Error opening input file /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/frames/%05d.png.
+Error opening input files: No such file or directory
+Initializing SimulationRunner...
+Adding agent being0(being0) of type text at position (np.int64(6), np.int64(6)).
+Adding agent being1(being1) of type text at position (np.int64(16), np.int64(3)).
+Adding agent being2(being2) of type text at position (np.int64(2), np.int64(10)).
+Adding agent being3(being3) of type text at position (np.int64(2), np.int64(14)).
+Adding agent being4(being4) of type text at position (np.int64(11), np.int64(11)).
+Adding agent being5(being5) of type text at position (np.int64(12), np.int64(16)).
+Adding agent being6(being6) of type text at position (np.int64(2), np.int64(2)).
+Adding agent being7(being7) of type text at position (np.int64(12), np.int64(15)).
+###### Launching with Parameters ######
+{'agent': {'agents_name_prefix': 'being',
+           'exogenous_motivation': 'base',
+           'genome': 'ocean_5',
+           'internal_memory_size': 150,
+           'max_history': 1,
+           'model': 'llama3',
+           'obs_style': 'list',
+           'use_colors': False,
+           'use_internal_memory': True,
+           'use_inventory': True},
+ 'env': {'agent_lifespan': 100,
+         'artifact_creation': True,
+         'artifact_creation_cost': 0,
+         'dead_agent_food': 'single',
+         'food_decay_rate': 0.05,
+         'food_mechanism': True,
+         'food_spawn_rate': 1,
+         'food_zones': None,
+         'grid_size': 20,
+         'inert_artifacts': False,
+         'init_agent_energy': 50,
+         'init_agents': 8,
+         'init_food': 100,
+         'init_human_agents': 0,
+         'min_agents': 0,
+         'reproduction_allowed': True,
+         'reproduction_cost': 50,
+         'static_food': False,
+         'vision_radius': 6},
+ 'run': {'ckpt_interval': 5,
+         'empty_countdown': 20,
+         'exp_description': '',
+         'exp_name': 'Pesquisa_TerraSophia_Rodada_06',
+         'live_render': False,
+         'max_parallel_workers': 1,
+         'max_ts': 15000,
+         'ports': (9000, 9001, 9002, 9003, 9010, 9011, 9012),
+         'save_root': '/mnt/Fides/Pesquisa_Filosofia/terralingua',
+         'save_video': True,
+         'video_fps': 10}}
+#######################################
+ℹ️  Press Ctrl+D to force kill immediately, Ctrl+C to stop after current step.
+
+=== Timestep 0 ===
+
+[LOG] being0 está pensando...
+++++++++++++++
+being0(being0)
+RESPONSE
+{
+    "action": "move",
+    "message": "",
+    "params": {
+        "direction": "right"
+    },
+    "internal_memory": ""
+}
+++++++++++++++
+[LOG] being0 respondeu com sucesso.
+
+[LOG] being1 está pensando...
+++++++++++++++
+being1(being1)
+RESPONSE
+{
+"action": "move",
+"message": "",
+"params": {
+  "direction": "right"
+},
+"internal_memory": ""
+}
+++++++++++++++
+[LOG] being1 respondeu com sucesso.
+
+[LOG] being2 está pensando...
+++++++++++++++
+being2(being2)
+RESPONSE
+{
+  "action": "move",
+  "message": "",
+  "params": {},
+  "internal_memory": {}
+}
+++++++++++++++
+Error occurred while parsing response of agent being2(being2): Incorrect action parameters. Expected keys {'direction'}; got set(). Params: {}
+Retrying attempt: 1
+++++++++++++++
+being2(being2)
+RESPONSE
+{
+  "action": "move",
+  "message": "",
+  "params": {
+    "direction": "right"
+  }
+}
+++++++++++++++
+[LOG] being2 respondeu com sucesso.
+
+[LOG] being3 está pensando...
+++++++++++++++
+being3(being3)
+RESPONSE
+{
+    "action": "move",
+    "message": "",
+    "params": {
+        "direction": "right"
+    },
+    "internal_memory": {
+        "current_state": {
+            "energy": 50,
+            "remaining_time": 100
+        }
+    }
+}
+++++++++++++++
+[LOG] being3 respondeu com sucesso.
+
+[LOG] being4 está pensando...
+++++++++++++++
+being4(being4)
+RESPONSE
+{
+    "action": "move",
+    "message": "",
+    "params": {
+        "direction": "right"
+    },
+    "internal_memory": ""
+}
+++++++++++++++
+[LOG] being4 respondeu com sucesso.
+
+[LOG] being5 está pensando...
+++++++++++++++
+being5(being5)
+RESPONSE
+{
+    "action": "move",
+    "message": "",
+    "params": {
+        "direction": "up"
+    },
+    "internal_memory": ""
+}
+++++++++++++++
+[LOG] being5 respondeu com sucesso.
+
+[LOG] being6 está pensando...
+++++++++++++++
+being6(being6)
+RESPONSE
+{
+    "action": "reproduce",
+    "message": "",
+    "params": {
+        "energy": 25,
+        "name": " offspring1"
+    },
+    "internal_memory": "{}"
+}
+++++++++++++++
+[LOG] being6 respondeu com sucesso.
+
+[LOG] being7 está pensando...
+++++++++++++++
+being7(being7)
+RESPONSE
+{
+  "action": "move",
+  "message": "",
+  "params": {
+    "direction": "down"
+  },
+  "internal_memory": "{\"last_action\":\"move\",\"last_params\":{\"direction\":\"down\"}}\n"
+}
+++++++++++++++
+[LOG] being7 respondeu com sucesso.
+Exception: 'OpenGridWorld' object has no attribute 'agents'
+💾 Saved checkpoint at timestep 1 to /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/checkpoint_latest.pkl
+Saving environment...
+Saving environment state at: /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/env_state.pkl
+Environment state saved at:  /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/env_state.pkl
+Running: ffmpeg -y -framerate 10 -i /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/frames/%05d.png -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p /mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/video.mp4 -vf scale=500:500:flags=neighbor
+Traceback (most recent call last):
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/main.py", line 35, in <module>
+    main()
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/main.py", line 31, in main
+    runner.run()
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/core/experiment/runner.py", line 473, in run
+    create_video(
+  File "/mnt/Fides/Pesquisa_Filosofia/terralingua/core/utils/generic.py", line 32, in create_video
+    subprocess.run(cmd, check=True)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['ffmpeg', '-y', '-framerate', '10', '-i', '/mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/frames/%05d.png', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '/mnt/Fides/Pesquisa_Filosofia/terralingua/logs/Pesquisa_TerraSophia_Rodada_06/video.mp4', '-vf', 'scale=500:500:flags=neighbor']' returned non-zero exit status 254.
