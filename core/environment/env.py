@@ -74,9 +74,7 @@ class OpenGridWorld:
         static_food: bool = False,
         food_mechanism: bool = True,
         verbose: int = 2,
-        inert_artifacts: bool = False,
-        agents_ref: dict = None
-    ):
+        inert_artifacts: bool = False):
         # grid/world params
         self.agents = agents_ref or {}
         # ---------------------------
@@ -572,6 +570,12 @@ class OpenGridWorld:
     
                 creator = agent
                 
+                # 0. Verificar Infraestrutura (Ninho) - Requisito da Tese
+                if not self._check_nearby_artifact(creator, "ninho", radius=3):
+                    infos[creator]["reproduction"] = {"status": "failed", "reason": "No Ninho nearby"}
+                    if self.agent_energy[creator] >= 1: self.agent_energy[creator] -= 1
+                    continue
+
                 # 1. Encontrar um parceiro adjacente
                 partner_id = None
                 creator_pos = self.agent_pos[creator]
@@ -2182,8 +2186,8 @@ class OpenGridWorld:
         pos = self.agent_pos.get(agent_id)
         if not pos: return False
         for art in self.artifacts.values(): # CORREÇÃO: Adicionado .values()
-            if art.type == art_type:
-                dist = np.linalg.norm(np.array(pos) - np.array(art.position))
+            if art.art_type == art_type:
+                dist = np.linalg.norm(np.array(pos) - np.array(art.pose))
   
                 if dist <= radius: return True
         return False
@@ -2286,12 +2290,3 @@ if __name__ == "__main__":
         img.save(image_path / f"step_{i:04d}.png")
  
     env.close()
-    def _apply_spatial_broadcast(self, origin_id, message, radius=5):
-        origin_pos = self.agent_pos.get(origin_id)
-        if not origin_pos: return
-        for target_id, target_pos in self.agent_pos.items():
-            if origin_id == target_id: continue
-            dist = np.linalg.norm(np.array(origin_pos) - np.array(target_pos))
-            if dist <= radius:
-                target_agent = self.agents.get(target_id)
-                if target_agent: target_agent.internal_memory += f'\n[RÁDIO]: {message}'

@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(filename='LOG_ABSOLUTO_RODADA_08_20260328_181143.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+
 import os
 import sys
 import signal
@@ -26,7 +29,7 @@ def main():
             # Tenta salvar o checkpoint antes de fechar
             try:
                 # O runner salvará o estado de todos os agentes e do ambiente
-                checkpoint_path = runner.save_checkpoint()
+                checkpoint_path = runner._save_checkpoint(ts=0)
                 print(f"[SISTEMA] Checkpoint salvo com sucesso em: {checkpoint_path}")
                 print(f"[SISTEMA] LOG ABSOLUTO atualizado. GPU e RAM liberadas.")
             except Exception as e:
@@ -54,7 +57,7 @@ def main():
     except Exception as e:
         print(f"[CRÍTICO] Erro durante a execução: {e}")
         # Tenta salvar mesmo em caso de erro inesperado
-        runner.save_checkpoint()
+        runner._save_checkpoint(ts=0)
         raise e
 
 if __name__ == "__main__":

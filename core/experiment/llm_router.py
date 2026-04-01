@@ -38,7 +38,7 @@ class LLMRouter:
                 "temperature": 0.9,
                 "response_format": {"type": "json_object"},
                 "max_tokens": 4096,
-                "extra_body": {"num_ctx": 2048}
+                "extra_body": {"num_ctx": 8192}
             }
             self.clients = [(llm_client, llm_chat_params)]
             

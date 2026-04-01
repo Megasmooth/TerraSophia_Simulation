@@ -29,4 +29,4 @@ def create_video(
     ]
 
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=False)
